@@ -91,6 +91,11 @@ jobs:
       - name: Flutter pub get
         working-directory: project
         run: flutter pub get
+
+      - name: Analyze (laporan saja, tidak menggagalkan build)
+        continue-on-error: true
+        working-directory: project
+        run: flutter analyze --no-fatal-infos || true
       - name: Build APK
         working-directory: project
         run: |
