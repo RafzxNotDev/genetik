@@ -28,6 +28,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 30
     steps:
       - name: Checkout repo
@@ -128,3 +130,33 @@ jobs:
           path: project/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: warn
           retention-days: 1
+
+      - name: Siapkan APK untuk release
+        if: success()
+        run: |
+          set -euo pipefail
+          APK="$(find project/build/app/outputs/flutter-apk -name '*.apk' | head -1)"
+          if [ -z "$APK" ]; then
+            echo "::error::APK hasil build tidak ditemukan"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$APK" "dist/${{ inputs.tag }}.apk"
+          ls -lh dist
+
+      # Nama asset sengaja "<tag>.apk" supaya URL-nya bisa ditebak server:
+      # https://github.com/OWNER/REPO/releases/download/apk-<tag>/<tag>.apk
+      - name: Publish APK ke Release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="apk-${{ inputs.tag }}"
+          FILE="dist/${{ inputs.tag }}.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber
+          else
+            gh release create "$TAG" "$FILE" --title "APK ${{ inputs.tag }}" --notes "Build otomatis dari menu Build APK di aplikasi."
+          fi
+          echo "Link: https://github.com/${{ github.repository }}/releases/download/$TAG/${{ inputs.tag }}.apk"
