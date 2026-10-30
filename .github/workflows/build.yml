@@ -79,23 +79,19 @@ jobs:
 
           echo "Disk sesudah dibersihkan:"
           df -h /
-
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           # FIX: jangan install package "tools" — sudah dihapus Google
           # (Warning: Failed to find package 'tools' → sdkmanager exit code 1)
           packages: platform-tools platforms;android-35 platforms;android-34 build-tools;35.0.0 build-tools;34.0.0
-
       - name: Install Android SDK extras
         shell: bash
         run: |
@@ -113,12 +109,10 @@ jobs:
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           ls -la "$ANDROID_HOME/build-tools" 2>/dev/null || true
           ls -la "$ANDROID_HOME/platforms" 2>/dev/null || true
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Sanitize nama asset
         id: sanitize
         shell: bash
@@ -127,7 +121,6 @@ jobs:
 
           SAFE="$(printf '%s' "${{ matrix.asset }}" | sed -E 's/\.[Zz][Ii][Pp]$//' | sed -E 's/[^A-Za-z0-9._-]+/-/g')"
           echo "name=$SAFE" >> "$GITHUB_OUTPUT"
-
       - name: Download ZIP dari Release
         id: download
         shell: bash
@@ -150,7 +143,6 @@ jobs:
           fi
 
           echo "zip_path=$ASSET" >> "$GITHUB_OUTPUT"
-
       - name: Extract ZIP
         id: extract
         shell: bash
@@ -170,7 +162,6 @@ jobs:
 
           echo "Isi ZIP:"
           find workspace -maxdepth 4 -type f | sort | head -300
-
       - name: Detect project
         id: detect
         shell: bash
@@ -216,14 +207,13 @@ jobs:
           fi
 
           echo "type=unknown" >> "$GITHUB_OUTPUT"
-
       - name: Setup Flutter
         if: steps.detect.outputs.type == 'flutter'
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.41.9"
           channel: stable
           cache: true
-
       - name: Locate Flutter project
         if: steps.detect.outputs.type == 'flutter'
         shell: bash
@@ -238,98 +228,17 @@ jobs:
           fi
 
           echo "FLUTTER_PROJECT=$ROOT" >> "$GITHUB_ENV"
-
-      - name: Ensure compatible Gradle version
-        if: steps.detect.outputs.type == 'flutter'
-        working-directory: ${{ env.FLUTTER_PROJECT }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
-
-          if [ -f "$WRAPPER" ]; then
-            echo "distributionUrl sebelum:"
-            grep distributionUrl "$WRAPPER" || true
-
-            # Flutter versi terbaru butuh Gradle minimal 8.14.0
-            sed -i -E 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.14.2-all.zip#' "$WRAPPER"
-
-            echo "distributionUrl sesudah:"
-            grep distributionUrl "$WRAPPER"
-          else
-            echo "gradle-wrapper.properties tidak ditemukan, lewati."
-          fi
-
-      - name: Ensure compatible AGP version
-        if: steps.detect.outputs.type == 'flutter'
-        working-directory: ${{ env.FLUTTER_PROJECT }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # Flutter versi terbaru butuh Android Gradle Plugin minimal 8.11.1
-          MIN_AGP="8.12.1"
-
-          for FILE in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-            if [ -f "$FILE" ]; then
-              if grep -q "com\.android\.application" "$FILE"; then
-                echo "AGP sebelum di $FILE:"
-                grep -n "com\.android\.application" "$FILE" || true
-
-                sed -i -E "s#(id\(?[\"']com\.android\.application[\"']\)? version ?[\"'])[0-9.]+([\"'])#\1${MIN_AGP}\2#" "$FILE"
-                sed -i -E "s#(classpath ?[\"']com\.android\.tools\.build:gradle:)[0-9.]+([\"'])#\1${MIN_AGP}\2#" "$FILE"
-
-                echo "AGP sesudah di $FILE:"
-                grep -n "com\.android\.application\|com\.android\.tools\.build:gradle" "$FILE" || true
-              fi
-            fi
-          done
-
-      - name: Ensure compatible Kotlin version
-        if: steps.detect.outputs.type == 'flutter'
-        working-directory: ${{ env.FLUTTER_PROJECT }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # Flutter versi terbaru butuh Kotlin Gradle Plugin minimal 2.2.20
-          MIN_KOTLIN="2.2.20"
-
-          for FILE in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-            if [ -f "$FILE" ]; then
-              if grep -q "org\.jetbrains\.kotlin\.android\|kotlin_version\|kotlin-gradle-plugin" "$FILE"; then
-                echo "Kotlin sebelum di $FILE:"
-                grep -n "org\.jetbrains\.kotlin\.android\|kotlin_version\|kotlin-gradle-plugin" "$FILE" || true
-
-                # plugins block: id("org.jetbrains.kotlin.android") version "x.x.x"
-                sed -i -E "s#(id\(?[\"']org\.jetbrains\.kotlin\.android[\"']\)? version ?[\"'])[0-9.]+([\"'])#\1${MIN_KOTLIN}\2#" "$FILE"
-
-                # ext.kotlin_version = 'x.x.x' (legacy)
-                sed -i -E "s#(ext\.kotlin_version ?= ?[\"'])[0-9.]+([\"'])#\1${MIN_KOTLIN}\2#" "$FILE"
-
-                # classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:x.x.x' (legacy)
-                sed -i -E "s#(classpath ?[\"']org\.jetbrains\.kotlin:kotlin-gradle-plugin:)[0-9.]+([\"'])#\1${MIN_KOTLIN}\2#" "$FILE"
-
-                echo "Kotlin sesudah di $FILE:"
-                grep -n "org\.jetbrains\.kotlin\.android\|kotlin_version\|kotlin-gradle-plugin" "$FILE" || true
-              fi
-            fi
-          done
-
       - name: Flutter dependencies
         if: steps.detect.outputs.type == 'flutter'
         working-directory: ${{ env.FLUTTER_PROJECT }}
         run: |
           flutter --version
           flutter pub get
-
       - name: Build Flutter APK
         if: steps.detect.outputs.type == 'flutter'
         working-directory: ${{ env.FLUTTER_PROJECT }}
         run: |
           flutter build apk --release
-
       - name: Collect Flutter APK
         if: steps.detect.outputs.type == 'flutter'
         shell: bash
@@ -347,7 +256,6 @@ jobs:
           fi
 
           cp "$APK" output/app-release.apk
-
       - name: Generate app icons
         if: steps.detect.outputs.type == 'android'
         shell: bash
@@ -363,7 +271,6 @@ jobs:
           else
             echo "generate_icons.py tidak ditemukan, lewati generate icon."
           fi
-
       - name: Locate Android project
         if: steps.detect.outputs.type == 'android'
         shell: bash
@@ -384,7 +291,6 @@ jobs:
           fi
 
           echo "ANDROID_PROJECT=$ROOT" >> "$GITHUB_ENV"
-
       - name: Build native Android APK
         if: steps.detect.outputs.type == 'android'
         working-directory: ${{ env.ANDROID_PROJECT }}
@@ -406,7 +312,6 @@ jobs:
 
           chmod +x ./gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
-
       - name: Collect native Android APK
         if: steps.detect.outputs.type == 'android'
         shell: bash
@@ -425,7 +330,6 @@ jobs:
           fi
 
           cp "$APK" output/app-release-unsigned.apk
-
       - name: Locate web project
         if: steps.detect.outputs.type == 'webview'
         shell: bash
@@ -459,7 +363,6 @@ jobs:
             cp "$INDEX" "$WEB_ROOT/index.html"
             echo "Membuat index.html dari $(basename "$INDEX") sebagai entry point."
           fi
-
       - name: Create WebView Android project
         if: steps.detect.outputs.type == 'webview'
         shell: bash
@@ -585,13 +488,11 @@ jobs:
           cd webview
           gradle wrapper --gradle-version 8.10.2
           chmod +x gradlew
-
       - name: Build WebView APK
         if: steps.detect.outputs.type == 'webview'
         working-directory: webview
         run: |
           ./gradlew assembleRelease --no-daemon --stacktrace
-
       - name: Collect WebView APK
         if: steps.detect.outputs.type == 'webview'
         shell: bash
@@ -609,13 +510,11 @@ jobs:
           fi
 
           cp "$APK" output/app-release-unsigned.apk
-
       - name: Unsupported ZIP
         if: steps.detect.outputs.type == 'unknown'
         run: |
           echo "::error::ZIP tidak berisi project Android, Flutter, atau Web."
           exit 1
-
       - name: Sign release APK (Android / WebView)
         if: success() && (steps.detect.outputs.type == 'android' || steps.detect.outputs.type == 'webview')
         env:
@@ -698,7 +597,6 @@ jobs:
           rm -f "$KS_FILE" output/app-release-unsigned.apk output/aligned.apk
           echo "Sign berhasil: output/app-release.apk"
           ls -la output/app-release.apk
-
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
