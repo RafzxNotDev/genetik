@@ -19,6 +19,11 @@ on:
         required: false
         default: "release"
         type: string
+      base_url:
+        description: "Base URL server API (opsional). Contoh: http://168.144.143.61:3168"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build:
@@ -98,11 +103,22 @@ jobs:
         run: flutter analyze --no-fatal-infos || true
       - name: Build APK
         working-directory: project
+        env:
+          BASE_URL: ${{ inputs.base_url }}
         run: |
-          if [ "${{ inputs.build_type }}" = "debug" ]; then
-            flutter build apk --debug
+          set -euo pipefail
+          DEFINES=()
+          if [ -n "${BASE_URL:-}" ]; then
+            echo "Memakai BASE_URL dari input: $BASE_URL"
+            DEFINES+=("--dart-define=BASE_URL=$BASE_URL")
           else
-            flutter build apk --release
+            echo "BASE_URL kosong — memakai default di lib/Qaxer/api.dart"
+          fi
+
+          if [ "${{ inputs.build_type }}" = "debug" ]; then
+            flutter build apk --debug "${DEFINES[@]}"
+          else
+            flutter build apk --release "${DEFINES[@]}"
           fi
       - name: Upload APK sebagai artifact
         if: always()
