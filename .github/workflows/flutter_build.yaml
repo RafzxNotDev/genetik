@@ -50,6 +50,20 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      # Keystore tetap: tanpa ini tiap runner bikin debug key baru, jadi APK
+      # hasil build selalu beda tanda tangan dan tidak bisa update install lama.
+      - name: Siapkan keystore rilis
+        env:
+          KS: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS" ]; then
+            echo "::warning::Secret KEYSTORE_BASE64 kosong — build akan pakai debug signing."
+            exit 0
+          fi
+          printf '%s' "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "KeyStore siap ($(stat -c%s "$RUNNER_TEMP/release.jks") byte)"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV
+
       # PENTING — JANGAN naikkan versi ini ke >= 3.44 kecuali font_awesome_flutter
       # di project kamu sudah di-upgrade ke v11+. Flutter 3.44 menjadikan class
       # IconData "final" (tidak bisa di-extend), yang membuat font_awesome_flutter
@@ -107,6 +121,9 @@ jobs:
         working-directory: project
         env:
           BASE_URL: ${{ inputs.base_url }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
           DEFINES=()
