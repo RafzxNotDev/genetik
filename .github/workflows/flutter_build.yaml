@@ -62,7 +62,7 @@ jobs:
           fi
           printf '%s' "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "KeyStore siap ($(stat -c%s "$RUNNER_TEMP/release.jks") byte)"
-          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       # PENTING — JANGAN naikkan versi ini ke >= 3.44 kecuali font_awesome_flutter
       # di project kamu sudah di-upgrade ke v11+. Flutter 3.44 menjadikan class
