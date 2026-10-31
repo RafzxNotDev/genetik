@@ -35,7 +35,7 @@ env:
   BUILD_TAG: ${{ github.event.inputs.tag }}
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: web2apk-build-${{ github.event.inputs.tag }}
