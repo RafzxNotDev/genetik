@@ -24,6 +24,11 @@ on:
         required: false
         default: ""
         type: string
+      target_platform:
+        description: "Target ABI (kosong = universal). Contoh: android-arm64"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build:
@@ -121,6 +126,7 @@ jobs:
         working-directory: project
         env:
           BASE_URL: ${{ inputs.base_url }}
+          PLATFORM: ${{ inputs.target_platform }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -132,6 +138,11 @@ jobs:
             DEFINES+=("--dart-define=BASE_URL=$BASE_URL")
           else
             echo "BASE_URL kosong — memakai default di lib/Qaxer/api.dart"
+          fi
+
+          if [ -n "${PLATFORM:-}" ]; then
+            echo "Target ABI dibatasi: $PLATFORM"
+            DEFINES+=("--target-platform=$PLATFORM")
           fi
 
           if [ "${{ inputs.build_type }}" = "debug" ]; then
