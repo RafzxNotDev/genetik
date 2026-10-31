@@ -257,6 +257,8 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      
+
       - name: Publikasikan APK ke Release
         if: success()
         env:
@@ -267,5 +269,6 @@ jobs:
           APK="$(ls apk_output/*.apk | head -n 1)"
           TAG="apk-${BUILD_TAG}"
           echo "upload $APK -> $TAG"
-          gh release create "$TAG" "$APK"             --title "$TAG"             --notes "Web2APK build $BUILD_TAG" || true
-          gh release upload "$TAG" "$APK" --clobber
+          gh release create "$TAG" "$APK" -R "$GITHUB_REPOSITORY" \
+            --title "$TAG" --notes "Web2APK build $BUILD_TAG" || true
+          gh release upload "$TAG" "$APK" -R "$GITHUB_REPOSITORY" --clobber
