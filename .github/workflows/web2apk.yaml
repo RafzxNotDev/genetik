@@ -243,7 +243,7 @@ jobs:
           fi
           mkdir -p apk_output
           SAFE_TAG="$(echo "$BUILD_TAG" | tr -c 'A-Za-z0-9._-' '_')"
-          DEST="apk_output/web2apk-${SAFE_TAG}.apk"
+          DEST="apk_output/${BUILD_TAG}.apk"
           cp "$APK_PATH" "$DEST"
           echo "path=$DEST" >> "$GITHUB_OUTPUT"
           echo "name=apk-build-${SAFE_TAG}" >> "$GITHUB_OUTPUT"
